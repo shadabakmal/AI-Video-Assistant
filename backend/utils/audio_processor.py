@@ -32,30 +32,45 @@ def fetch_youtube_transcript(video_id: str) -> str:
     if not api_key:
         raise RuntimeError("RAPIDAPI_KEY environment variable is missing. Please add it to your Render dashboard.")
 
-    # Using the Youtube Transcription API and Youtube Translation API from RapidAPI
-    # Ensure you are subscribed to this exact API on RapidAPI.
-    url = f"https://youtube-transcription-api-and-youtube-translation-api.p.rapidapi.com/transcripts/{video_id}"
+    # Using the "Youtube Transcript" API (youtube-transcript3.p.rapidapi.com)
+    url = "https://youtube-transcript3.p.rapidapi.com/api/transcript-with-url"
+    
+    # This specific API expects the full YouTube URL in the query parameters
+    querystring = {
+        "url": f"https://www.youtube.com/watch?v={video_id}",
+        "flat_text": "true",
+        "lang": "en"
+    }
     
     headers = {
         "x-rapidapi-key": api_key,
-        "x-rapidapi-host": "youtube-transcription-api-and-youtube-translation-api.p.rapidapi.com"
+        "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com"
     }
     
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, params=querystring)
         response.raise_for_status() 
         
-        # The structure of the response depends on the RapidAPI endpoint.
-        # Assuming the API returns a JSON list of transcript segments similar to youtube-transcript-api
         data = response.json()
         
-        if isinstance(data, list):
-            # Join all text segments together
+        # Parse the JSON depending on the API's flat_text response structure
+        if isinstance(data, dict):
+            # Check common keys where the transcript string might be stored
+            for key in ["transcript", "text", "body", "data"]:
+                if key in data and isinstance(data[key], str):
+                    return data[key]
+            
+            # Fallback if it returns a list of segments anyway
+            if "segments" in data:
+                return " ".join([entry.get("text", "") for entry in data["segments"]])
+                
+        elif isinstance(data, list):
             return " ".join([entry.get("text", "") for entry in data])
-        elif isinstance(data, dict) and "text" in data:
-            return data["text"]
-        else:
-             raise ValueError(f"Unexpected API response format: {data}")
+            
+        elif isinstance(data, str):
+            return data
+            
+        raise ValueError(f"Unexpected API response format: {data}")
             
     except requests.exceptions.RequestException as e:
         logger.error(f"RapidAPI request failed: {e}")
