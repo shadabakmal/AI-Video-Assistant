@@ -1,1 +1,23 @@
+# Environment variables
 .env
+*.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+backend/venv/
+backend/storage/*.wav
+backend/storage/*.mp4
+backend/storage/*.webm
+backend/vector_db/
+
+# Node / React
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.DS_Store
