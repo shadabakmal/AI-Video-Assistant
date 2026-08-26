@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import requests
 
 logger = logging.getLogger("uvicorn")
 
@@ -24,49 +25,46 @@ def extract_youtube_video_id(url: str) -> str:
 
 def fetch_youtube_transcript(video_id: str) -> str:
     """
-    Fetch YouTube transcript. Supports both:
-    - youtube-transcript-api v1.x (instance-based: YouTubeTranscriptApi().fetch())
-    - youtube-transcript-api v0.x (class-based: YouTubeTranscriptApi.get_transcript())
+    Fetch YouTube transcript using RapidAPI to bypass Render IP blocks.
+    Requires RAPIDAPI_KEY to be set in environment variables.
     """
-    from youtube_transcript_api import YouTubeTranscriptApi
+    api_key = os.environ.get("RAPIDAPI_KEY")
+    if not api_key:
+        raise RuntimeError("RAPIDAPI_KEY environment variable is missing. Please add it to your Render dashboard.")
 
-    # Try v1.x API first (instance method)
+    # Using the Youtube Transcription API and Youtube Translation API from RapidAPI
+    # Ensure you are subscribed to this exact API on RapidAPI.
+    url = f"https://youtube-transcription-api-and-youtube-translation-api.p.rapidapi.com/transcripts/{video_id}"
+    
+    headers = {
+        "x-rapidapi-key": api_key,
+        "x-rapidapi-host": "youtube-transcription-api-and-youtube-translation-api.p.rapidapi.com"
+    }
+    
     try:
-        api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id)
-        # v1.x returns a Transcript object; iterate over snippets
-        parts = []
-        for snippet in transcript:
-            text = getattr(snippet, 'text', None) or snippet.get('text', '') if isinstance(snippet, dict) else str(snippet)
-            if hasattr(snippet, 'text'):
-                text = snippet.text
-            elif isinstance(snippet, dict):
-                text = snippet.get('text', '')
-            else:
-                text = str(snippet)
-            parts.append(text)
-        return " ".join(parts)
-    except (TypeError, AttributeError):
-        pass
-
-    # Try v0.x API (class method)
-    try:
-        entries = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
-        return " ".join([entry.get("text", "") for entry in entries])
-    except Exception:
-        pass
-
-    # Try v0.x without language filter
-    try:
-        entries = YouTubeTranscriptApi.get_transcript(video_id)
-        return " ".join([entry.get("text", "") for entry in entries])
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch YouTube transcript: {e}")
+        response = requests.get(url, headers=headers)
+        response.raise_for_status() 
+        
+        # The structure of the response depends on the RapidAPI endpoint.
+        # Assuming the API returns a JSON list of transcript segments similar to youtube-transcript-api
+        data = response.json()
+        
+        if isinstance(data, list):
+            # Join all text segments together
+            return " ".join([entry.get("text", "") for entry in data])
+        elif isinstance(data, dict) and "text" in data:
+            return data["text"]
+        else:
+             raise ValueError(f"Unexpected API response format: {data}")
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"RapidAPI request failed: {e}")
+        raise RuntimeError(f"Failed to fetch YouTube transcript via API: {e}")
 
 
 def download_youtube_audio(url: str) -> str:
     """
-    Fetch the official YouTube transcript using youtube-transcript-api.
+    Fetch the official YouTube transcript using RapidAPI.
     Returns a path to a text file containing the transcript.
     No audio download needed — avoids YouTube bot detection entirely.
     """

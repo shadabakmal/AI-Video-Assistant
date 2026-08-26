@@ -17,6 +17,14 @@ def get_ffmpeg_binary() -> str:
         logger.warning(f"Could not get imageio_ffmpeg binary: {e}")
         return "ffmpeg"
 
+def convert_to_wav(input_path: str, output_path: str) -> str:
+    cmd = [
+        get_ffmpeg_binary(), "-y", "-i", input_path,
+        "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", output_path,
+    ]
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_path
+
 def extract_youtube_id(url: str) -> str:
     pattern = r"(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})"
     match = re.search(pattern, url)
