@@ -19,9 +19,19 @@ class JSONFallbackStore:
         if self.file_path.exists():
             try:
                 with open(self.file_path, "r", encoding="utf-8") as f:
-                    self._data = json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        self._data.update(data)
             except Exception as e:
                 logger.warning(f"Error loading JSON fallback store: {e}")
+
+        # Ensure all required keys exist regardless of previous file format
+        if "users" not in self._data or not isinstance(self._data.get("users"), dict):
+            self._data["users"] = {}
+        if "media_contents" not in self._data or not isinstance(self._data.get("media_contents"), dict):
+            self._data["media_contents"] = {}
+        if "messages" not in self._data or not isinstance(self._data.get("messages"), list):
+            self._data["messages"] = []
 
     def _save(self):
         try:
@@ -37,13 +47,14 @@ class JSONFallbackStore:
         return user_id
 
     async def find_user_by_email(self, email: str):
-        for user in self._data["users"].values():
-            if user.get("email") == email:
+        users_dict = self._data.get("users", {})
+        for user in users_dict.values():
+            if isinstance(user, dict) and user.get("email") == email:
                 return user
         return None
 
     async def find_user_by_id(self, user_id: str):
-        return self._data["users"].get(user_id)
+        return self._data.get("users", {}).get(user_id)
 
     async def insert_media_content(self, doc: dict):
         media_id = str(doc.get("_id", doc.get("id")))
@@ -52,19 +63,23 @@ class JSONFallbackStore:
         return media_id
 
     async def find_media_content(self, media_id: str):
-        return self._data["media_contents"].get(media_id)
+        return self._data.get("media_contents", {}).get(media_id)
 
     async def list_media_contents_by_user(self, user_id: str):
-        items = [m for m in self._data["media_contents"].values() if m.get("user_id") == user_id]
+        media_dict = self._data.get("media_contents", {})
+        items = [m for m in media_dict.values() if isinstance(m, dict) and m.get("user_id") == user_id]
         items.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
         return items
 
     async def insert_message(self, doc: dict):
+        if "messages" not in self._data or not isinstance(self._data.get("messages"), list):
+            self._data["messages"] = []
         self._data["messages"].append(doc)
         self._save()
 
     async def get_chat_history(self, media_content_id: str):
-        return [m for m in self._data["messages"] if m.get("media_content_id") == media_content_id]
+        messages_list = self._data.get("messages", [])
+        return [m for m in messages_list if isinstance(m, dict) and m.get("media_content_id") == media_content_id]
 
 
 class DatabaseManager:
