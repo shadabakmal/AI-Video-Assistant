@@ -21,7 +21,10 @@ from app.services.grok_service import summarize_transcript_with_grok
 try:
     from utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
 except ImportError:
-    from backend.utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
+    try:
+        from backend.utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
+    except ImportError:
+        from app.utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
 
 logger = logging.getLogger("uvicorn")
 
