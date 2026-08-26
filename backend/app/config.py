@@ -19,6 +19,10 @@ GROK_API_KEY = os.getenv("GROK_API_KEY", os.getenv("XAI_API_KEY", ""))
 GROK_BASE_URL = os.getenv("GROK_BASE_URL", "https://api.x.ai/v1")  # Default to xAI official API endpoint
 GROK_MODEL = os.getenv("GROK_MODEL", "grok-beta")  # e.g., grok-beta, grok-2-latest, or openrouter equivalent
 
+# Legacy / Alternative API Keys
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+
 # OpenAI Whisper API (optional, falls back to local Whisper if absent)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
