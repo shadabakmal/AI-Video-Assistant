@@ -3,7 +3,12 @@ import logging
 import requests
 import whisper
 from pydub import AudioSegment
-from app.config import WHISPER_MODEL, SARVAM_API_KEY
+
+try:
+    from app.config import WHISPER_MODEL, SARVAM_API_KEY
+except ImportError:
+    WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
+    SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 
 logger = logging.getLogger("uvicorn")
 _whisper_model = None
