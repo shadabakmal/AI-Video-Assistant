@@ -26,41 +26,46 @@ def download_youtube_audio(url: str) -> str:
     """
     Fetch the official YouTube transcript using youtube-transcript-api.
     Returns a path to a text file containing the transcript.
+    No audio download needed — avoids YouTube bot detection entirely.
     """
     from youtube_transcript_api import YouTubeTranscriptApi
 
     video_id = extract_youtube_video_id(url)
     logger.info(f"Fetching YouTube transcript for video ID: {video_id}")
 
-    try:
-        # Try English first, then fall back to any available language
-        entries = None
-        for lang_args in [{"languages": ["en"]}, {"languages": ["en-US"]}, {"languages": ["en-GB"]}, {}]:
-            try:
-                entries = YouTubeTranscriptApi.get_transcript(video_id, **lang_args)
+    entries = None
+    last_error = None
+
+    # Try English first, then any available language
+    for lang_args in [
+        {"languages": ["en"]},
+        {"languages": ["en-US"]},
+        {"languages": ["en-GB"]},
+        {}  # no language filter = any available
+    ]:
+        try:
+            entries = YouTubeTranscriptApi.get_transcript(video_id, **lang_args)
+            if entries:
                 break
-            except Exception:
-                continue
+        except Exception as e:
+            last_error = e
+            continue
 
-        if not entries:
-            raise RuntimeError("No transcript found in any language for this video.")
+    if not entries:
+        raise RuntimeError(
+            f"No transcript found for this YouTube video. "
+            f"Make sure the video has captions enabled. Error: {last_error}"
+        )
 
-        full_text = " ".join([entry.get("text", "") for entry in entries])
+    full_text = " ".join([entry.get("text", "") for entry in entries])
 
-        # Save transcript text to a file (media_service expects a file path)
-        transcript_path = os.path.join(DOWNLOAD_DIR, f"{video_id}_transcript.txt")
-        with open(transcript_path, "w", encoding="utf-8") as f:
-            f.write(full_text)
+    # Save transcript text to a file
+    transcript_path = os.path.join(DOWNLOAD_DIR, f"{video_id}_transcript.txt")
+    with open(transcript_path, "w", encoding="utf-8") as f:
+        f.write(full_text)
 
-        logger.info(f"YouTube transcript saved to {transcript_path} ({len(full_text)} chars)")
-        return transcript_path
-
-    except TranscriptsDisabled:
-        raise RuntimeError(f"Transcripts are disabled for this YouTube video ({video_id}).")
-    except NoTranscriptFound:
-        raise RuntimeError(f"No transcript found for YouTube video ({video_id}). Try a different video.")
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch YouTube transcript: {e}")
+    logger.info(f"YouTube transcript saved: {transcript_path} ({len(full_text)} chars)")
+    return transcript_path
 
 
 def convert_to_wav(input_path: str) -> str:
@@ -78,8 +83,7 @@ def convert_to_wav(input_path: str) -> str:
 
 
 def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
-    """Split a WAV file into chunks."""
-    # If it's a transcript text file, return as-is (no chunking needed)
+    """Split a WAV file into chunks. Returns as-is for text transcript files."""
     if wav_path.endswith(".txt"):
         return [wav_path]
 
