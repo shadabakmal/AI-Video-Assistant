@@ -1,8 +1,16 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BASE_DIR.parent
+
+# Add root and backend to sys.path so 'utils' and 'core' are always importable
+for path in [str(ROOT_DIR), str(BASE_DIR)]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 # MongoDB

@@ -1,14 +1,27 @@
 import os
+import sys
 import uuid
 import logging
 import httpx
+from pathlib import Path
 from datetime import datetime
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ROOT_DIR = BASE_DIR.parent
+for p in [str(ROOT_DIR), str(BASE_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 from app.config import STORAGE_DIR
 from app.database import get_db_manager
 from app.models import MediaContentModel
 from app.services.transcriber_service import transcribe_audio
 from app.services.grok_service import summarize_transcript_with_grok
-from utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
+
+try:
+    from utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
+except ImportError:
+    from backend.utils.audio_processor import download_youtube_audio, convert_to_wav, chunk_audio
 
 logger = logging.getLogger("uvicorn")
 
