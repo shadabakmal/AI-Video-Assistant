@@ -24,29 +24,27 @@ def extract_youtube_video_id(url: str) -> str:
 
 def download_youtube_audio(url: str) -> str:
     """
-    Instead of downloading audio (which triggers YouTube bot detection on server IPs),
-    fetch the official YouTube transcript using youtube-transcript-api.
+    Fetch the official YouTube transcript using youtube-transcript-api.
     Returns a path to a text file containing the transcript.
     """
-    from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+    from youtube_transcript_api import YouTubeTranscriptApi
 
     video_id = extract_youtube_video_id(url)
     logger.info(f"Fetching YouTube transcript for video ID: {video_id}")
 
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-
-        # Try English first, then any manually created, then auto-generated
-        try:
-            transcript = transcript_list.find_manually_created_transcript(['en', 'en-US', 'en-GB'])
-        except Exception:
+        # Try English first, then fall back to any available language
+        entries = None
+        for lang_args in [{"languages": ["en"]}, {"languages": ["en-US"]}, {"languages": ["en-GB"]}, {}]:
             try:
-                transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB'])
+                entries = YouTubeTranscriptApi.get_transcript(video_id, **lang_args)
+                break
             except Exception:
-                # Fall back to the first available transcript
-                transcript = next(iter(transcript_list))
+                continue
 
-        entries = transcript.fetch()
+        if not entries:
+            raise RuntimeError("No transcript found in any language for this video.")
+
         full_text = " ".join([entry.get("text", "") for entry in entries])
 
         # Save transcript text to a file (media_service expects a file path)
