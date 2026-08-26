@@ -88,9 +88,19 @@ def transcribe_sarvam(audio_path: str) -> dict:
     }
 
 def transcribe_audio(audio_path: str, language: str = "english") -> dict:
+    # If it's a .txt file (YouTube transcript fetched via youtube-transcript-api), read directly
+    if audio_path.endswith(".txt"):
+        logger.info("Reading pre-fetched YouTube transcript from text file...")
+        with open(audio_path, "r", encoding="utf-8") as f:
+            full_text = f.read().strip()
+        return {
+            "full_text": full_text,
+            "segments": [{"start": 0.0, "end": 0.0, "text": full_text}]
+        }
+
     if language.lower() == "hinglish" and SARVAM_API_KEY:
         logger.info("Transcribing using Sarvam AI STT...")
         return transcribe_sarvam(audio_path)
-    
+
     logger.info("Transcribing using local Whisper...")
     return transcribe_whisper(audio_path)
