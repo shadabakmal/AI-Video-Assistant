@@ -22,42 +22,61 @@ def extract_youtube_video_id(url: str) -> str:
     raise ValueError(f"Could not extract YouTube video ID from URL: {url}")
 
 
+def fetch_youtube_transcript(video_id: str) -> str:
+    """
+    Fetch YouTube transcript. Supports both:
+    - youtube-transcript-api v1.x (instance-based: YouTubeTranscriptApi().fetch())
+    - youtube-transcript-api v0.x (class-based: YouTubeTranscriptApi.get_transcript())
+    """
+    from youtube_transcript_api import YouTubeTranscriptApi
+
+    # Try v1.x API first (instance method)
+    try:
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id)
+        # v1.x returns a Transcript object; iterate over snippets
+        parts = []
+        for snippet in transcript:
+            text = getattr(snippet, 'text', None) or snippet.get('text', '') if isinstance(snippet, dict) else str(snippet)
+            if hasattr(snippet, 'text'):
+                text = snippet.text
+            elif isinstance(snippet, dict):
+                text = snippet.get('text', '')
+            else:
+                text = str(snippet)
+            parts.append(text)
+        return " ".join(parts)
+    except (TypeError, AttributeError):
+        pass
+
+    # Try v0.x API (class method)
+    try:
+        entries = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
+        return " ".join([entry.get("text", "") for entry in entries])
+    except Exception:
+        pass
+
+    # Try v0.x without language filter
+    try:
+        entries = YouTubeTranscriptApi.get_transcript(video_id)
+        return " ".join([entry.get("text", "") for entry in entries])
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch YouTube transcript: {e}")
+
+
 def download_youtube_audio(url: str) -> str:
     """
     Fetch the official YouTube transcript using youtube-transcript-api.
     Returns a path to a text file containing the transcript.
     No audio download needed — avoids YouTube bot detection entirely.
     """
-    from youtube_transcript_api import YouTubeTranscriptApi
-
     video_id = extract_youtube_video_id(url)
     logger.info(f"Fetching YouTube transcript for video ID: {video_id}")
 
-    entries = None
-    last_error = None
+    full_text = fetch_youtube_transcript(video_id)
 
-    # Try English first, then any available language
-    for lang_args in [
-        {"languages": ["en"]},
-        {"languages": ["en-US"]},
-        {"languages": ["en-GB"]},
-        {}  # no language filter = any available
-    ]:
-        try:
-            entries = YouTubeTranscriptApi.get_transcript(video_id, **lang_args)
-            if entries:
-                break
-        except Exception as e:
-            last_error = e
-            continue
-
-    if not entries:
-        raise RuntimeError(
-            f"No transcript found for this YouTube video. "
-            f"Make sure the video has captions enabled. Error: {last_error}"
-        )
-
-    full_text = " ".join([entry.get("text", "") for entry in entries])
+    if not full_text or not full_text.strip():
+        raise RuntimeError("Transcript was empty. The video may not have captions enabled.")
 
     # Save transcript text to a file
     transcript_path = os.path.join(DOWNLOAD_DIR, f"{video_id}_transcript.txt")
