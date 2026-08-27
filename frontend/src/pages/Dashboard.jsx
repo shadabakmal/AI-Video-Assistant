@@ -125,7 +125,7 @@ export default function Dashboard() {
                   </>
                 ) : (
                   <>
-                    Process <Sparkles size={16} />
+                    Process 
                   </>
                 )}
               </button>

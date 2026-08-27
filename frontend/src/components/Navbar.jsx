@@ -19,9 +19,8 @@ export default function Navbar({ user, onLogout }) {
         </div>
         <div>
           <span className="font-extrabold text-lg text-white tracking-wide flex items-center gap-1.5">
-            AI Video Assistant <Sparkles size={16} className="text-indigo-400" />
+            AI Video Assistant 
           </span>
-          <span className="text-xs text-slate-400 block font-mono">v2.0 • Grok & Whisper Powered</span>
         </div>
       </Link>
 
