@@ -46,11 +46,7 @@ export default function Navbar({ user, onLogout }) {
               Logout
             </button>
           </>
-        ) : (
-          <div className="text-xs text-slate-400 font-mono">
-            Direct-to-Storage • JWT Authenticated
-          </div>
-        )}
+        ) : null}
       </div>
     </nav>
   );
