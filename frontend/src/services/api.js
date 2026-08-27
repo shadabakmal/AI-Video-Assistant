@@ -40,6 +40,17 @@ export const processMedia = async (mediaUrl, mediaType, language = 'english') =>
   return res.data;
 };
 
+export const uploadMediaFile = async (file, mediaType, language = 'english', onUploadProgress) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('media_type', mediaType);
+  formData.append('language', language);
+  const res = await api.post('/api/media/upload', formData, {
+    onUploadProgress,
+  });
+  return res.data;
+};
+
 export const getUserMediaList = async () => {
   const res = await api.get('/api/media/user/list');
   return res.data;

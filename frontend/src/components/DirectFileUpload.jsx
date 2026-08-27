@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { processMedia } from '../services/api';
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { uploadMediaFile } from '../services/api';
+import { UploadCloud, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function DirectFileUpload({ mediaType, onUploadSuccess }) {
   const [file, setFile] = useState(null);
@@ -25,40 +24,17 @@ export default function DirectFileUpload({ mediaType, onUploadSuccess }) {
     }
 
     setUploading(true);
-    setProgress(15);
-    setStatusText('Uploading file directly to Supabase Storage...');
+    setProgress(0);
+    setStatusText('Uploading file to the private backend...');
     setError(null);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `uploads/${fileName}`;
-
-      // 1. Direct upload to Supabase Storage Bucket
-      const { data, error: uploadError } = await supabase.storage
-        .from('media-uploads')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      setProgress(60);
-      setStatusText('Retrieving public URL...');
-
-      // 2. Retrieve Public File URL
-      const { data: publicUrlData } = supabase.storage
-        .from('media-uploads')
-        .getPublicUrl(filePath);
-
-      const publicUrl = publicUrlData.publicUrl;
-
-      setProgress(85);
-      setStatusText('Processing media with Whisper & Grok on backend...');
-
-      // 3. Send file metadata & public URL to FastAPI backend
-      const result = await processMedia(publicUrl, mediaType);
+      setStatusText('Processing media privately on the backend...');
+      const result = await uploadMediaFile(file, mediaType, 'english', (event) => {
+        if (event.total) {
+          setProgress(Math.round((event.loaded / event.total) * 50));
+        }
+      });
 
       setProgress(100);
       setUploading(false);
@@ -83,7 +59,7 @@ export default function DirectFileUpload({ mediaType, onUploadSuccess }) {
           <h3 className="text-base font-semibold text-white">
             Upload {mediaType} File
           </h3>
-          <p className="text-xs text-slate-400">Direct-to-Supabase Storage streaming</p>
+            <p className="text-xs text-slate-400">Processed privately and removed after analysis</p>
         </div>
       </div>
 

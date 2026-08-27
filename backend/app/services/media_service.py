@@ -42,12 +42,20 @@ async def download_file_from_url(url: str, destination_dir: str) -> str:
             
     return local_path
 
-async def process_media_content(user_id: str, media_url: str, media_type: str, language: str = "english") -> dict:
+async def process_media_content(
+    user_id: str,
+    media_url: str,
+    media_type: str,
+    language: str = "english",
+    local_path: str | None = None,
+) -> dict:
     """Full processing pipeline: fetch/download media, extract transcript, summarize with Grok, save to DB."""
     logger.info(f"Processing media for user {user_id}: {media_type} from {media_url}")
     
     local_audio_path = None
-    if "youtube.com" in media_url or "youtu.be" in media_url:
+    if local_path:
+        local_audio_path = convert_to_wav(local_path)
+    elif "youtube.com" in media_url or "youtu.be" in media_url:
         logger.info("Downloading YouTube audio...")
         local_audio_path = download_youtube_audio(media_url)
     else:
